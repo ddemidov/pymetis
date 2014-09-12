@@ -1,0 +1,39 @@
+#!/usr/bin/python
+
+import pymetis
+import numpy as np
+from pylab import *
+
+n   = 256
+n2  = n * n
+nnz = n2 + 4 * (n - 2) * (n - 2)
+
+ptr = np.zeros(n2 + 1, dtype = np.int32)
+col = np.zeros(nnz,    dtype = np.int32)
+
+bnd = (0, n-1)
+
+col_stencil = np.array([-n, -1,  0,  1,  n])
+
+idx  = 0
+head = 0
+
+for i in range(0, n):
+    for j in range(0, n):
+        if i in bnd or j in bnd:
+            col[head] = idx
+            head += 1
+        else:
+            col[head:head+5] = col_stencil + idx
+            head += 5
+
+        idx += 1
+        ptr[idx] = head
+
+part = pymetis.partition(5, 1, ptr, col);
+
+figure(num=1, figsize=(7,7))
+imshow(part.reshape((n,n)), origin='lower')
+colorbar()
+
+show()
