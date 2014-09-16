@@ -155,6 +155,24 @@ std::vector<int> pointwise_partition(
         int options = 0;
         int edgecut;
 
+#ifdef USE_METIS_5
+        int nconstraints = 1;
+        METIS_PartGraphKway(
+                &nrows, //nvtxs
+                &nconstraints, //ncon -- new
+                const_cast<int*>(ptr.data()), //xadj
+                const_cast<int*>(col.data()), //adjncy
+                NULL, //vwgt
+                NULL, //vsize -- new
+                NULL, //adjwgt
+                &npart,
+                NULL,//real t *tpwgts,
+                NULL,// real t ubvec
+                NULL,
+                &edgecut,
+                part.data()
+                );
+#else
         METIS_PartGraphKway(
                 &nrows,
                 const_cast<int*>(ptr.data()),
@@ -168,6 +186,7 @@ std::vector<int> pointwise_partition(
                 &edgecut,
                 part.data()
                 );
+#endif
     }
 
     return part;
