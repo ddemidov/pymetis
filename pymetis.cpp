@@ -155,7 +155,7 @@ std::vector<int> pointwise_partition(
         int options = 0;
         int edgecut;
 
-#ifdef USE_METIS_5
+#if defined(METIS_VER_MAJOR) && (METIS_VER_MAJOR >= 5)
         int nconstraints = 1;
         METIS_PartGraphKway(
                 &nrows, //nvtxs
