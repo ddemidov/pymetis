@@ -218,11 +218,22 @@ PyObject* partition(
 }
 
 //---------------------------------------------------------------------------
+#if PY_MAJOR_VERSION >= 3
+void*
+#else
+void
+#endif
+call_import_array() {
+    import_array();
+    return NUMPY_IMPORT_ARRAY_RETVAL;
+}
+
+//---------------------------------------------------------------------------
 BOOST_PYTHON_MODULE(pymetis)
 {
     using namespace boost::python;
 
-    import_array();
+    call_import_array();
     numpy_boost_python_register_type<int,    1>();
     numpy_boost_python_register_type<double, 1>();
 
