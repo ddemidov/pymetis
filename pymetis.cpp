@@ -4,24 +4,21 @@
 #include <boost/range/algorithm.hpp>
 #include <boost/range/numeric.hpp>
 
-#include <boost/python.hpp>
-#include <boost/python/extract.hpp>
-#include <boost/python/numeric.hpp>
-#include <boost/python/raw_function.hpp>
-#include <boost/python/stl_iterator.hpp>
-
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#include "numpy_boost_python.hpp"
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 extern "C" {
 #include <metis.h>
 }
 
+namespace py = pybind11;
+
 //---------------------------------------------------------------------------
 void pointwise_graph(
         int n, int block_size,
-        const numpy_boost<int, 1> &ptr,
-        const numpy_boost<int, 1> &col,
+        const std::vector<int> &ptr,
+        const std::vector<int> &col,
         std::vector<int> &pptr,
         std::vector<int> &pcol
         )
@@ -193,12 +190,25 @@ std::vector<int> pointwise_partition(
 }
 
 //---------------------------------------------------------------------------
-PyObject* partition(
+py::array_t<int> partition(
         int nparts, int block_size,
-        const numpy_boost<int, 1> &ptr,
-        const numpy_boost<int, 1> &col
+        py::array_t<int> &_ptr,
+        py::array_t<int> &_col
         )
 {
+    py::buffer_info pinfo = _ptr.request();
+    py::buffer_info cinfo = _col.request();
+
+    std::vector<int> ptr(
+            static_cast<const int*>(pinfo.ptr),
+            static_cast<const int*>(pinfo.ptr) + pinfo.shape[0]
+            );
+
+    std::vector<int> col(
+            static_cast<const int*>(cinfo.ptr),
+            static_cast<const int*>(cinfo.ptr) + cinfo.shape[0]
+            );
+
     int n = ptr.size() - 1;
 
     // Pointwise graph
@@ -208,34 +218,17 @@ PyObject* partition(
     // Pointwise partition
     std::vector<int> ppart = pointwise_partition(nparts, pptr, pcol);
 
-    numpy_boost<int, 1> part(&n);
+    std::vector<int> part(n);
     for(int i = 0; i < n; ++i)
         part[i] = ppart[i / block_size];
 
-    PyObject *result = part.py_ptr();
-    Py_INCREF(result);
-    return result;
+    return py::array(part.size(), part.data());
 }
 
 //---------------------------------------------------------------------------
-#if PY_MAJOR_VERSION >= 3
-void*
-#else
-void
-#endif
-call_import_array() {
-    import_array();
-    return NUMPY_IMPORT_ARRAY_RETVAL;
-}
-
-//---------------------------------------------------------------------------
-BOOST_PYTHON_MODULE(pymetis)
+PYBIND11_PLUGIN(pymetis)
 {
-    using namespace boost::python;
-
-    call_import_array();
-    numpy_boost_python_register_type<int,    1>();
-    numpy_boost_python_register_type<double, 1>();
-
-    def("partition", partition);
+    py::module m("pymetis", "Python interface to metis");
+    m.def("partition", partition);
+    return m.ptr();
 }
